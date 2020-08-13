@@ -140,7 +140,7 @@ class psb_null_t : public psb_value_t {
 public:
   psb_null_t(const psb_t &psb, unsigned char *&p, psb_value_t::type_t type);
 
-  virtual string get_type_string() { return "psb_null_t"; }
+  virtual string get_type_string() const { return "psb_null_t"; }
 
 private:
   unsigned char *buff;
@@ -152,7 +152,7 @@ class psb_boolean_t : public psb_value_t {
 public:
   psb_boolean_t(const psb_t &psb, unsigned char *&p, psb_value_t::type_t type);
 
-  virtual string get_type_string() { return "psb_boolean_t"; }
+  virtual string get_type_string() const { return "psb_boolean_t"; }
 
   bool get_boolean() const;
 
@@ -170,6 +170,8 @@ public:
   unsigned char *get_buff();
   uint32_t       get_length();
   uint32_t       get_index();
+
+  virtual string get_type_string() const { return "psb_resource_t"; }
 
 protected:
   uint32_t       chunk_index;

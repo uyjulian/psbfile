@@ -17,13 +17,15 @@
 #include <iostream>
 #include <vector>
 
-// #define DUMP_VALUE
+#define DUMP_VALUE
+
+extern bool TVPEncodeUTF8ToUTF16(tjs_string &output, const std::string &source);
 
 // use for debugging
 static void dump_psb_value(psb_t *psb, psb_value_t const *value, int indent = 0,
                            bool terminate_line = true);
 
-static tTJSVariable convert_psb_value(psb_t *psb, psb_value_t const* value);
+static tTJSVariant convert_psb_value(psb_t *psb, psb_value_t const *value);
 
 static void dump_psb_value(psb_t *psb, psb_value_t const *value, int indent,
                            bool terminate_line) {
@@ -39,6 +41,7 @@ static void dump_psb_value(psb_t *psb, psb_value_t const *value, int indent,
   switch (std::distance(type_map.begin(), res)) {
   case 1:
     std::cout << "<null>";
+    break;
   case 2: {
     psb_boolean_t const *v = dynamic_cast<psb_boolean_t const *>(value);
     if (!v) {
@@ -178,7 +181,7 @@ static void dump_psb_value(psb_t *psb, psb_value_t const *value, int indent,
   }
 }
 
-static void convert_psb_value(psb_t *psb, psb_value_t const *value) {
+static tTJSVariant convert_psb_value(psb_t *psb, psb_value_t const *value) {
   static std::vector<std::string> type_map{
       "psb_value_t",    "psb_null_t",    "psb_boolean_t",
       "psb_resource_t", "psb_number_t",  "psb_array_t",
@@ -188,89 +191,154 @@ static void convert_psb_value(psb_t *psb, psb_value_t const *value) {
   auto res =
       std::find(type_map.begin(), type_map.end(), value->get_type_string());
 
-  switch (std::distance(type_map.begin(), res)) {
+  if (res == type_map.end()) {
+      TVPThrowExceptionMessage(
+          TJS_W("PSB invalid type: unrecognized type name"));
+  }
+
+  auto typenum = std::distance(type_map.begin(), res);
+
+  switch (typenum) {
   case 1:
-    return tTJSVariable();
+    return tTJSVariant();
+    break;
   case 2: {
     psb_boolean_t const *v = dynamic_cast<psb_boolean_t const *>(value);
     if (!v) {
-      // TODO:
+      TVPThrowExceptionMessage(
+          TJS_W("PSB type conversion failed: expected boolean"));
     }
 
-    return tTJSVariable(v->get_boolean());
-  }
-  case 3:
-    // TODO: octet?
+    return tTJSVariant(v->get_boolean());
     break;
+  }
+  case 3: {
+    psb_resource_t const *v = dynamic_cast<psb_resource_t const *>(value);
+    if (!v) {
+      TVPThrowExceptionMessage(
+          TJS_W("PSB type conversion failed: expected resource"));
+    }
+
+    TVPThrowExceptionMessage(
+        TJS_W("PSB type conversion failed: octet not implemented"));
+
+    break;
+  }
   case 4: {
     psb_number_t const *v = dynamic_cast<psb_number_t const *>(value);
     if (!v) {
-      // TODO:
+      TVPThrowExceptionMessage(
+          TJS_W("PSB type conversion failed: expected number"));
     }
 
     switch (v->get_number_type()) {
     case 0:
-      return tTJSVariable(v->get_integer());
+      return tTJSVariant(v->get_integer());
       break;
     case 1:
-      return tTJSVariable(v->get_float());
+      return tTJSVariant(v->get_float());
       break;
     case 2:
-      return tTJSVariable(v->get_double());
+      return tTJSVariant(v->get_double());
       break;
     default:
-      // TOOD:
+      TVPThrowExceptionMessage(
+          TJS_W("PSB type conversion failed: invalid number type"));
       break;
     }
     break;
   }
-  case 5:
-    std::cout << "[";
-    {
-      psb_array_t const *v = dynamic_cast<psb_array_t const *>(value);
-      if (!v) {
-        // TODO:
-      }
+  case 5: {
+    psb_array_t const *v = dynamic_cast<psb_array_t const *>(value);
+    if (!v) {
+      TVPThrowExceptionMessage(
+          TJS_W("PSB type conversion failed: expected array"));
+    }
 
-      // TODO:
+    auto arr  = TJSCreateArrayObject();
+    auto size = v->size();
+
+    for (size_t i = 0; i < size; i++) {
+      tTJSVariant var(static_cast<tjs_int32>(v->get(i)));
+      arr->PropSetByNum(TJS_MEMBERENSURE, i, &var, arr);
+    }
+
+    return arr;
     break;
+  }
   case 6: {
     psb_string_t const *v = dynamic_cast<psb_string_t const *>(value);
     if (!v) {
-      // TODO:
+      TVPThrowExceptionMessage(
+          TJS_W("PSB type conversion failed: expected string"));
     }
 
-    // TODO:
+    tjs_string str{};
+    TVPEncodeUTF8ToUTF16(str, v->get_string());
 
-    break;
+    return ttstr(str);
   }
   case 7: {
     psb_objects_t const *v = dynamic_cast<psb_objects_t const *>(value);
     if (!v) {
-      // TODO:
+      TVPThrowExceptionMessage(
+          TJS_W("PSB type conversion failed: expected objects"));
     }
 
-    // TODO:
+    auto dict = TJSCreateDictionaryObject();
+    auto size = v->size();
+
+    for (size_t i = 0; i < size; i++) {
+      tjs_string name{};
+      TVPEncodeUTF8ToUTF16(name, v->get_name(i));
+
+      auto         ptr   = v->get_data(i);
+      psb_value_t *child = psb->unpack(ptr);
+
+      tTJSVariant var = convert_psb_value(psb, child);
+
+      dict->PropSet(TJS_MEMBERENSURE, name.c_str(), nullptr, &var, dict);
+
+      delete child;
+    }
+
+    return dict;
 
     break;
   }
   case 8: {
     psb_collection_t const *v = dynamic_cast<psb_collection_t const *>(value);
     if (!v) {
-      // TODO:
+      TVPThrowExceptionMessage(
+          TJS_W("PSB type conversion failed: expected collection"));
     }
 
-    // TODO:
+    auto arr  = TJSCreateArrayObject();
+    auto size = v->size();
+
+    for (size_t i = 0; i < size; i++) {
+      auto         ptr   = v->get(i);
+      psb_value_t *child = psb->unpack(ptr);
+
+      tTJSVariant var = convert_psb_value(psb, child);
+
+      arr->PropSetByNum(TJS_MEMBERENSURE, i, &var, arr);
+
+      delete child;
+    }
+
+    return arr;
 
     break;
   }
   case 0:
   default:
-    // <invalid-type>
+    TVPThrowExceptionMessage(
+        TJS_W("PSB invalid type: not supported typenum: %1"), tjs_int(typenum));
     break;
   }
 
-  return tTJSVariable();
+  return tTJSVariant();
 }
 
 class PSBFile {
@@ -283,8 +351,7 @@ public:
     // load into psb_t
     m_psb = new psb_t(m_buf);
 
-    // TODO: translate into tTJSVariant
-#ifdef DUMP_VALUE    
+#ifdef DUMP_VALUE
     dump_psb_value(m_psb, m_psb->get_objects());
 #endif
     m_root = convert_psb_value(m_psb, m_psb->get_objects());
@@ -301,7 +368,6 @@ public:
   }
 
   tTJSVariant getRoot() {
-    // TODO: implement
     return m_root;
   }
 
@@ -313,6 +379,9 @@ private:
   void open(const tTJSVariant &filename) {
 
     auto in = TVPCreateIStream(filename, TJS_BS_READ);
+
+    TVPAddLog(
+        (ttstr(TJS_W("loading file: ")) + filename.AsStringNoAddRef()).c_str());
 
     if (!in) {
       TVPThrowExceptionMessage(
