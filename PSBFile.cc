@@ -263,7 +263,11 @@ static tTJSVariant convert_psb_value(psb_t *psb, psb_value_t const *value) {
       arr->PropSetByNum(TJS_MEMBERENSURE, i, &var, arr);
     }
 
-    return arr;
+    auto output = tTJSVariant(arr, arr);
+    arr->Release();
+    
+    return output;
+
     break;
   }
   case 6: {
@@ -302,7 +306,10 @@ static tTJSVariant convert_psb_value(psb_t *psb, psb_value_t const *value) {
       delete child;
     }
 
-    return dict;
+    auto output = tTJSVariant(dict, dict);
+    dict->Release();
+    
+    return output;
 
     break;
   }
@@ -327,8 +334,11 @@ static tTJSVariant convert_psb_value(psb_t *psb, psb_value_t const *value) {
       delete child;
     }
 
-    return arr;
-
+    auto output = tTJSVariant(arr, arr);
+    arr->Release();
+    
+    return output;
+    
     break;
   }
   case 0:
