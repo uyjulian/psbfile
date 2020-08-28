@@ -17,7 +17,8 @@
 #include <iostream>
 #include <vector>
 
-#define DUMP_VALUE
+// Use this for dump .PSB file
+// #define DUMP_VALUE
 
 extern bool TVPEncodeUTF8ToUTF16(tjs_string &output, const std::string &source);
 
