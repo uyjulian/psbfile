@@ -193,8 +193,7 @@ static tTJSVariant convert_psb_value(psb_t *psb, psb_value_t const *value) {
       std::find(type_map.begin(), type_map.end(), value->get_type_string());
 
   if (res == type_map.end()) {
-      TVPThrowExceptionMessage(
-          TJS_W("PSB invalid type: unrecognized type name"));
+    TVPThrowExceptionMessage(TJS_W("PSB invalid type: unrecognized type name"));
   }
 
   auto typenum = std::distance(type_map.begin(), res);
@@ -214,14 +213,15 @@ static tTJSVariant convert_psb_value(psb_t *psb, psb_value_t const *value) {
     break;
   }
   case 3: {
+    // TODO: handle psb_resouce_t::index
     psb_resource_t const *v = dynamic_cast<psb_resource_t const *>(value);
     if (!v) {
       TVPThrowExceptionMessage(
           TJS_W("PSB type conversion failed: expected resource"));
     }
 
-    TVPThrowExceptionMessage(
-        TJS_W("PSB type conversion failed: octet not implemented"));
+    // the buffer is copied
+    return tTJSVariant(v->get_buff(), v->get_length());
 
     break;
   }
@@ -266,7 +266,7 @@ static tTJSVariant convert_psb_value(psb_t *psb, psb_value_t const *value) {
 
     auto output = tTJSVariant(arr, arr);
     arr->Release();
-    
+
     return output;
 
     break;
@@ -309,7 +309,7 @@ static tTJSVariant convert_psb_value(psb_t *psb, psb_value_t const *value) {
 
     auto output = tTJSVariant(dict, dict);
     dict->Release();
-    
+
     return output;
 
     break;
@@ -337,9 +337,9 @@ static tTJSVariant convert_psb_value(psb_t *psb, psb_value_t const *value) {
 
     auto output = tTJSVariant(arr, arr);
     arr->Release();
-    
+
     return output;
-    
+
     break;
   }
   case 0:
@@ -378,9 +378,7 @@ public:
     }
   }
 
-  tTJSVariant getRoot() {
-    return m_root;
-  }
+  tTJSVariant getRoot() { return m_root; }
 
 private:
   psb_t *     m_psb;

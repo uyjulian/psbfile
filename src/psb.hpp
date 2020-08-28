@@ -167,9 +167,10 @@ class psb_resource_t : public psb_value_t {
 public:
   psb_resource_t(const psb_t &psb, unsigned char *&p, psb_value_t::type_t type);
 
-  unsigned char *get_buff();
-  uint32_t       get_length();
-  uint32_t       get_index();
+  unsigned char *      get_buff();
+  unsigned char const *get_buff() const;
+  uint32_t             get_length() const;
+  uint32_t             get_index() const;
 
   virtual string get_type_string() const { return "psb_resource_t"; }
 

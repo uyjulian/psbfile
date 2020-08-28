@@ -58,9 +58,10 @@ psb_resource_t::psb_resource_t(const psb_t &psb, unsigned char *&p,
   chunk_buff  = psb.get_chunk(p);
   chunk_len   = psb.get_chunk_length(p);
 }
-uint32_t       psb_resource_t::get_index() { return chunk_index; }
-unsigned char *psb_resource_t::get_buff() { return chunk_buff; }
-uint32_t       psb_resource_t::get_length() { return chunk_len; }
+uint32_t             psb_resource_t::get_index() const { return chunk_index; }
+unsigned char *      psb_resource_t::get_buff() { return chunk_buff; }
+const unsigned char *psb_resource_t::get_buff() const { return chunk_buff; }
+uint32_t             psb_resource_t::get_length() const { return chunk_len; }
 /***************************************************************************
  * psb_number_t
  */
